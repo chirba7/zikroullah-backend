@@ -1,5 +1,5 @@
 import express from "express";
-import { saveZikr, getGroupZikrHistory, getGroupStats } from "../controllers/zikrController.js";
+import { saveZikr, getGroupZikrHistory, getGroupStats } from "../backend/controllers/zikrController.js";
 
 const router = express.Router();
 
