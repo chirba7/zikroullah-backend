@@ -123,13 +123,24 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       
-      {/* ZONE HAUTE */}
-      <div className="flex-1 overflow-y-auto pb-4 px-4">
-        <Header title={`Zikr : ${group.name}`} />
+      {/* En-tête avec bouton retour en haut à droite */}
+      <div className="px-4 py-3 flex justify-between items-center border-b">
+        <h1 className="text-xl font-bold text-gray-800">Zikr : {group.name}</h1>
+        <button
+          onClick={() => setPage("groupe")}
+          style={{ backgroundColor: '#f97316' }}
+          className="text-white hover:opacity-90 px-4 py-2 rounded-lg font-medium transition-opacity"
+        >
+          ↩️ Retour
+        </button>
+      </div>
 
-        {/* Mode fixe uniquement */}
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <label className="block text-blue-800 font-semibold mb-2 text-center text-lg">
+      {/* ZONE PRINCIPALE - Sans scroll */}
+      <div className="flex-1 flex flex-col justify-between px-4 py-4">
+        
+        {/* Objectif */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <label className="block text-blue-800 font-semibold mb-2 text-center">
             🎯 Objectif à atteindre
           </label>
           <Input
@@ -137,68 +148,63 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
             placeholder="Ex: 33, 100, 1000..."
             value={target}
             onChange={handleTargetChange}
-            className="w-full text-center text-lg py-3"
+            className="w-full text-center text-lg py-2"
             min="1"
           />
           {targetNumber > 0 && (
-            <div className="mt-3 text-center">
-              <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+            <div className="mt-2">
+              <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-green-600 h-3 rounded-full transition-all duration-300"
+                  className="bg-green-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${Math.min((count / targetNumber) * 100, 100)}%` }}
                 ></div>
               </div>
-              <p className="text-sm text-blue-700 font-medium">
-                Progression: {count} / {targetNumber} ({Math.round((count / targetNumber) * 100)}%)
+              <p className="text-sm text-blue-700 font-medium mt-1 text-center">
+                {count} / {targetNumber} ({Math.round((count / targetNumber) * 100)}%)
               </p>
-              {count >= targetNumber && targetNumber > 0 && (
-                <p className="text-green-600 font-bold mt-1">🎉 Objectif atteint !</p>
+              {count >= targetNumber && (
+                <p className="text-green-600 font-bold text-center text-sm">🎉 Objectif atteint !</p>
               )}
             </div>
           )}
         </div>
 
         {/* Score */}
-        <div className="text-center mb-6 bg-gray-50 rounded-2xl py-6 border">
-          <p className="text-gray-600 text-lg mb-2">Votre score actuel</p>
-          <p className="text-7xl font-bold text-green-700">{count}</p>
-          <p className="text-gray-500 mt-2">fois </p>
+        <div className="text-center bg-gray-50 rounded-2xl py-6 border my-4">
+          <p className="text-gray-600 text-sm mb-1">Votre score actuel</p>
+          <p className="text-6xl font-bold text-green-700">{count}</p>
+          <p className="text-gray-500 mt-1 text-sm">fois</p>
         </div>
 
         {/* Boutons action */}
-        <div className="space-y-3">
-          <Button
+        <div className="space-y-2 mb-4">
+          <button
             onClick={handleFinish}
             disabled={saving}
-            className="w-full bg-red-600 hover:bg-red-700 text-lg py-4"
+            style={{ backgroundColor: saving ? '#93c5fd' : '#2563eb' }}
+            className="w-full text-white text-base py-3 rounded-lg font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
           >
             {saving ? "💾 Sauvegarde..." : "✅ Terminer et Sauvegarder"}
-          </Button>
+          </button>
 
           {count > 0 && (
-            <Button
+            <button
               onClick={handleReset}
-              className="w-full bg-gray-500 hover:bg-gray-600 text-lg py-3"
+              style={{ backgroundColor: '#dc2626' }}
+              className="w-full text-white text-base py-3 rounded-lg font-medium hover:opacity-90 transition-opacity"
             >
               🔄 Réinitialiser
-            </Button>
+            </button>
           )}
-
-          <Button
-            onClick={() => setPage("groupe")}
-            className="w-full bg-gray-300 text-gray-800 hover:bg-gray-400 text-lg py-3"
-          >
-            ↩️ Retour au groupe
-          </Button>
         </div>
       </div>
 
       {/* BOUTON +1 */}
-      <div className="h-48 bg-green-600">
+      <div className="h-40">
         <button
           onClick={handleIncrement}
           disabled={mode === "fixed" && count >= targetNumber && targetNumber > 0}
-          className={`w-full h-full text-white text-8xl font-bold transition-colors ${
+          className={`w-full h-full text-white text-7xl font-bold transition-colors ${
             pressed ? "bg-green-700" : "bg-green-600"
           } ${
             mode === "fixed" && count >= targetNumber && targetNumber > 0 
@@ -211,4 +217,4 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
       </div>
     </div>
   );
-} 
+}

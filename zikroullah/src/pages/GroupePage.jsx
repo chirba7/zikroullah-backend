@@ -8,6 +8,8 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
   const [newUserPhone, setNewUserPhone] = useState("");
   const [localGroup, setLocalGroup] = useState(group);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showAddMember, setShowAddMember] = useState(false);
   
   console.log("🔍 GroupePage rendu - Group ID:", localGroup?._id);
   console.log("🔍 Scores actuels:", localGroup?.members?.map(m => ({
@@ -68,7 +70,7 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
       console.log("🛑 Arrêt auto-refresh");
       clearInterval(interval);
     };
-  }, [localGroup._id]); // Re-démarrer si l'ID du groupe change
+  }, [localGroup._id]);
   
   // ✅ Mettre à jour quand la prop group change
   useEffect(() => {
@@ -107,6 +109,7 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
       setLocalGroup(updatedGroup);
       setGroups(groups.map(g => g._id === localGroup._id ? updatedGroup : g));
       setNewUserPhone("");
+      setShowAddMember(false);
       alert("Utilisateur ajouté au groupe !");
       
       await fetchGroupData();
@@ -181,155 +184,205 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
   const totalScore = localGroup.members.reduce((acc, m) => acc + (m.score || 0), 0);
 
   return (
-    <div className="p-6">
-      <Header title={`${localGroup.name}`} />
+    <div className="h-screen flex flex-col bg-white overflow-hidden">
       
-      {/* Indicateur de refresh avec animation */}
-      <div className="bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 mb-4 flex items-center justify-between">
-        <p className="text-xs text-gray-600">
-          {isRefreshing ? (
-            <span className="flex items-center gap-2">
-              <span className="inline-block w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></span>
-              Actualisation...
-            </span>
-          ) : (
-            "🔄 Auto-actualisation activée (2s)"
-          )}
-        </p>
+      {/* En-tête avec bouton retour orange en haut à droite */}
+      <div className="px-4 py-3 flex justify-between items-center border-b bg-white flex-shrink-0">
+        <h1 className="text-lg md:text-xl font-bold text-gray-800 truncate mr-2">{localGroup.name}</h1>
         <button
-          onClick={handleManualRefresh}
-          className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg"
-          disabled={isRefreshing}
+          onClick={() => setPage("home")}
+          style={{ backgroundColor: '#f97316' }}
+          className="text-white hover:opacity-90 px-3 md:px-4 py-2 rounded-lg font-medium transition-opacity text-sm md:text-base whitespace-nowrap"
         >
-          Actualiser
+          ↩️ Retour
         </button>
       </div>
-      
-      {/* Indicateur Admin */}
-      {isAdmin && (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-2 rounded-lg mb-4">
-          ⭐ Vous êtes l'administrateur de ce groupe
-        </div>
-      )}
 
-      {/* Clé du groupe */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <p className="text-blue-800 font-semibold text-center">
-          Clé d'invitation : <span className="font-mono text-lg">{localGroup.key}</span>
-        </p>
-      </div>
+      {/* Contenu principal - scrollable uniquement */}
+      <div className="flex-1 overflow-y-auto p-4">
+        
+        {/* Indicateur Admin compact */}
+        {isAdmin && (
+          <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-3 py-2 rounded-lg mb-3 text-sm">
+            ⭐ Administrateur
+          </div>
+        )}
 
-      {/* Score total du groupe */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6 text-center">
-        <p className="text-green-800 font-semibold text-2xl">
-          📊 Score total du groupe : {totalScore}
-        </p>
-        <p className="text-green-600 text-sm mt-2">
-          Cumul de tous les Zikr des membres
-        </p>
-      </div>
+        {/* Grille responsive 2 colonnes sur desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          
+          {/* Clé du groupe */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-blue-800 font-semibold text-center text-sm md:text-base">
+              🔑 Clé : <span className="font-mono">{localGroup.key}</span>
+            </p>
+          </div>
 
-      {/* Liste des membres */}
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-4">👥 Membres ({localGroup.members.length})</h2>
-        <div className="flex flex-col gap-3">
-          {localGroup.members.map((m) => (
-            <div
-              key={m.userId || m.id}
-              className="flex justify-between items-center p-4 bg-white rounded-xl shadow-sm border"
-            >
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-semibold text-gray-800">
-                    {m.name || `${m.firstName} ${m.lastName}`}
-                  </p>
-                  {m.userId === localGroup.adminId && (
-                    <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
-                      Admin
-                    </span>
-                  )}
-                  {m.userId === user.id && (
-                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                      Vous
-                    </span>
-                  )}
-                </div>
-                <p className="text-gray-600 text-sm">{m.phone}</p>
-                <p className="text-green-600 font-semibold mt-1">🎯 Score: {m.score || 0}</p>
-                <p className="text-gray-500 text-xs mt-1">
-                  Participation: {totalScore > 0 ? Math.round(((m.score || 0) / totalScore) * 100) : 0}%
-                </p>
-              </div>
-
-              {/* Boutons d'action */}
-              <div className="flex gap-2">
-                {isAdmin && m.userId !== user.id && (
-                  <button
-                    className="text-red-600 hover:text-red-800 font-bold text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg"
-                    onClick={() => handleRemoveUser(m.userId || m.id)}
-                    title="Supprimer du groupe"
-                  >
-                    🗑️
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Section Admin - Ajout manuel de membre */}
-      {isAdmin && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold text-lg mb-3">➕ Ajouter un membre</h3>
-          <div className="flex flex-col gap-2">
-            <Input
-              placeholder="Numéro de téléphone"
-              value={newUserPhone}
-              onChange={(e) => setNewUserPhone(e.target.value)}
-            />
-            <Button onClick={handleAddUser} className="bg-blue-600 hover:bg-blue-700">
-              Inviter par numéro
-            </Button>
+          {/* Score total du groupe */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+            <p className="text-green-800 font-semibold text-sm md:text-base">
+              📊 Score total : <span className="text-lg md:text-xl">{totalScore}</span>
+            </p>
           </div>
         </div>
-      )}
 
-      {/* Actions principales */}
-      <div className="space-y-3">
-        <Button
-          className="w-full bg-green-600 hover:bg-green-700 text-lg py-3"
-          onClick={() => setPage("zikr")}
-        >
-          🕌 Démarrer un nouveau ZIKR
-        </Button>
+        {/* Bouton actualiser compact */}
+        <div className="mb-3">
+          <button
+            onClick={handleManualRefresh}
+            style={{ backgroundColor: '#3b82f6' }}
+            className="w-full text-white hover:opacity-90 px-3 py-2 rounded-lg transition-opacity text-sm flex items-center justify-center gap-2"
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? (
+              <>
+                <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                Actualisation...
+              </>
+            ) : (
+              "🔄 Actualiser"
+            )}
+          </button>
+        </div>
 
-        {/* Actions admin */}
+        {/* Liste des membres - Accordéon */}
+        <div className="mb-3">
+          <button
+            onClick={() => setShowMembers(!showMembers)}
+            className="w-full bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg p-3 flex justify-between items-center transition-colors"
+          >
+            <h2 className="text-base md:text-lg font-semibold">👥 Membres ({localGroup.members.length})</h2>
+            <span 
+              className="text-xl transition-transform duration-300" 
+              style={{ transform: showMembers ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            >
+              ▼
+            </span>
+          </button>
+          
+          <div 
+            className="overflow-hidden transition-all duration-300 ease-in-out"
+            style={{ 
+              maxHeight: showMembers ? '400px' : '0',
+              opacity: showMembers ? '1' : '0'
+            }}
+          >
+            <div className="overflow-y-auto max-h-96 mt-2 space-y-2 pr-1">
+              {localGroup.members.map((m) => (
+                <div
+                  key={m.userId || m.id}
+                  className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm border"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <p className="font-semibold text-gray-800 text-sm md:text-base truncate">
+                        {m.name || `${m.firstName} ${m.lastName}`}
+                      </p>
+                      {m.userId === localGroup.adminId && (
+                        <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
+                          Admin
+                        </span>
+                      )}
+                      {m.userId === user.id && (
+                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
+                          Vous
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-600 text-xs md:text-sm">{m.phone}</p>
+                    <div className="flex gap-3 mt-1 text-xs md:text-sm">
+                      <p className="text-green-600 font-semibold">🎯 {m.score || 0}</p>
+                      <p className="text-gray-500">
+                        {totalScore > 0 ? Math.round(((m.score || 0) / totalScore) * 100) : 0}%
+                      </p>
+                    </div>
+                  </div>
+
+                  {isAdmin && m.userId !== user.id && (
+                    <button
+                      className="text-red-600 hover:text-red-800 font-bold text-sm bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg ml-2 flex-shrink-0"
+                      onClick={() => handleRemoveUser(m.userId || m.id)}
+                      title="Supprimer"
+                    >
+                      🗑️
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Section Admin - Ajout membre en accordéon */}
         {isAdmin && (
-          <button
-            className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold text-lg"
-            onClick={handleDeleteGroup}
-          >
-            🗑️ Supprimer le groupe
-          </button>
+          <div className="mb-3">
+            <button
+              onClick={() => setShowAddMember(!showAddMember)}
+              className="w-full bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg p-3 flex justify-between items-center transition-colors"
+            >
+              <h3 className="font-semibold text-base">➕ Ajouter un membre</h3>
+              <span 
+                className="text-xl transition-transform duration-300" 
+                style={{ transform: showAddMember ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              >
+                ▼
+              </span>
+            </button>
+            
+            <div 
+              className="overflow-hidden transition-all duration-300 ease-in-out"
+              style={{ 
+                maxHeight: showAddMember ? '200px' : '0',
+                opacity: showAddMember ? '1' : '0'
+              }}
+            >
+              <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <Input
+                  placeholder="Numéro de téléphone"
+                  value={newUserPhone}
+                  onChange={(e) => setNewUserPhone(e.target.value)}
+                  className="mb-2"
+                />
+                <button
+                  onClick={handleAddUser}
+                  style={{ backgroundColor: '#3b82f6' }}
+                  className="w-full text-white hover:opacity-90 py-2 rounded-lg font-medium transition-opacity text-sm"
+                >
+                  Inviter
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* Quitter le groupe (non-admin) */}
-        {!isAdmin && (
+        {/* Actions principales - Grille responsive */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <button
-            className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-lg font-semibold text-lg"
-            onClick={handleLeaveGroup}
+            onClick={() => setPage("zikr")}
+            style={{ backgroundColor: '#16a34a' }}
+            className="w-full text-white hover:opacity-90 py-3 rounded-lg font-semibold transition-opacity text-sm md:text-base"
           >
-            👋 Quitter le groupe
+            🕌 Nouveau ZIKR
           </button>
-        )}
 
-        <Button 
-          onClick={() => setPage("home")}
-          className="w-full bg-gray-300 text-gray-800 hover:bg-gray-400"
-        >
-          ↩️ Retour aux groupes
-        </Button>
+          {isAdmin ? (
+            <button
+              style={{ backgroundColor: '#dc2626' }}
+              className="w-full text-white hover:opacity-90 py-3 rounded-lg font-semibold transition-opacity text-sm md:text-base"
+              onClick={handleDeleteGroup}
+            >
+              🗑️ Supprimer
+            </button>
+          ) : (
+            <button
+              style={{ backgroundColor: '#4b5563' }}
+              className="w-full text-white hover:opacity-90 py-3 rounded-lg font-semibold transition-opacity text-sm md:text-base"
+              onClick={handleLeaveGroup}
+            >
+              👋 Quitter
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
