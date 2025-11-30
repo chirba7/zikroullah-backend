@@ -10,7 +10,10 @@ import { default as zikrRoutes } from "./routes/zikrRoutes.js";
 dotenv.config();
 connectDB();
 
-// ⭐ CORRECTION CORS - AJOUTEZ CE CODE :
+// ⭐ INITIALISATION DE app EN PREMIER
+const app = express();
+
+// ⭐ ENSUITE UTILISER app
 app.use(cors({
   origin: [
     "https://zikroullah-frontend.onrender.com",
@@ -19,9 +22,7 @@ app.use(cors({
   credentials: true
 }));
 
-const app = express();
 app.use(express.json());
-app.use(cors());
 
 // Route racine
 app.get("/", (req, res) => {
