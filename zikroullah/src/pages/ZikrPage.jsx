@@ -123,6 +123,22 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       
+      {/* HEADER AVEC BOUTON RETOUR */}
+      <div className="bg-orange-500 text-white p-4">
+        <div className="flex justify-between items-center">
+          <button 
+            onClick={() => setPage("groupe")}
+            className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+          >
+            ↩️ Retour au groupe
+          </button>
+          <h1 className="text-xl font-bold text-center flex-1 mx-4">
+            {group.name}
+          </h1>
+          <div className="w-12"></div> {/* Espace équilibré */}
+        </div>
+      </div>
+
       {/* CONTENU PRINCIPAL - TOUT VISIBLE SANS SCROLL */}
       <div className="flex-1 p-4 space-y-4 overflow-hidden">
         
@@ -164,12 +180,12 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
           <p className="text-gray-500 mt-2">fois "Allahou Akbar"</p>
         </div>
 
-        {/* BOUTONS ACTION AVEC BONNES COULEURS */}
+        {/* BOUTONS ACTION COMPACT */}
         <div className="space-y-3">
           <Button
             onClick={handleFinish}
             disabled={saving}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-4 font-bold rounded-lg"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-3 font-bold"
           >
             {saving ? "💾 Sauvegarde..." : "✅ Terminer et Sauvegarder"}
           </Button>
@@ -177,19 +193,11 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
           {count > 0 && (
             <Button
               onClick={handleReset}
-              className="w-full bg-red-600 hover:bg-red-700 text-white text-lg py-4 font-bold rounded-lg"
+              className="w-full bg-red-600 hover:bg-red-700 text-white text-lg py-3 font-bold"
             >
               🔄 Réinitialiser
             </Button>
           )}
-
-          {/* ⭐ BOUTON RETOUR EN ORANGE CORRIGÉ */}
-          <Button
-            onClick={() => setPage("groupe")}
-            className="w-full bg-orange-500 text-white hover:bg-orange-600 text-lg py-3 font-bold"
-          >
-            ↩️ Retour au groupe
-          </Button>
         </div>
       </div>
 
