@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Button from "../components/Button";
 import Header from "../components/Header";
 import Input from "../components/Input";
@@ -7,6 +7,55 @@ import { API_URL } from "../config";
 export default function HomePage({ user, groups, setGroups, setCurrentGroup, setPage, setUser, refreshGroups }) {
   const [joinCode, setJoinCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // ✅ Fetch direct des groupes depuis le serveur (comme GroupePage)
+  const fetchGroupsData = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setIsRefreshing(true);
+      console.log(`🔄 Fetch des groupes pour user ${user.id}...`);
+      
+      const response = await fetch(`${API_URL}/groups/user/${user.id}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const freshData = await response.json();
+      console.log("✅ Données fraîches reçues:", {
+        totalGroups: freshData.length,
+        groups: freshData.map(g => ({ name: g.name, members: g.members.length }))
+      });
+      
+      setGroups(freshData);
+      
+    } catch (error) {
+      console.error("❌ Erreur fetch groupes:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // ✅ Auto-refresh toutes les 2 secondes (exactement comme GroupePage)
+  useEffect(() => {
+    console.log("🔄 Démarrage auto-refresh pour HomePage");
+    
+    // Premier fetch immédiat
+    fetchGroupsData();
+    
+    // Puis toutes les 2 secondes
+    const interval = setInterval(() => {
+      console.log("⏰ Auto-refresh déclenché");
+      fetchGroupsData();
+    }, 2000);
+
+    return () => {
+      console.log("🛑 Arrêt auto-refresh");
+      clearInterval(interval);
+    };
+  }, [user.id]);
 
   const handleJoinGroup = async () => {
     if (!joinCode.trim()) return alert("Veuillez entrer un code !");
@@ -33,14 +82,27 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
         throw new Error(data.message);
       }
 
-      alert("Groupe rejoint avec succès !");
+      // ✅ CRITIQUE : Rafraîchir AVANT l'alerte et la redirection
+      console.log("🔄 Rafraîchissement des groupes après jonction...");
+      await fetchGroupsData();
       
-      // Recharger les groupes depuis la base
-      if (refreshGroups) {
-        await refreshGroups();
+      alert("Groupe rejoint avec succès !");
+      setJoinCode("");
+      
+      // ✅ Redirection automatique vers le groupe rejoint
+      if (data.group) {
+        console.log("🔄 Redirection vers le groupe:", data.group);
+        setCurrentGroup(data.group);
+        setPage("groupe");
+      } else {
+        // Si l'API ne retourne pas le groupe, on le cherche dans la liste rafraîchie
+        const joinedGroup = groups.find(g => g.key === joinCode.trim());
+        if (joinedGroup) {
+          setCurrentGroup(joinedGroup);
+          setPage("groupe");
+        }
       }
       
-      setJoinCode("");
     } catch (error) {
       alert(error.message || "Erreur lors de la jonction au groupe");
     } finally {
@@ -58,6 +120,12 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
       setUser(null);
       setPage("auth");
     }
+  };
+
+  // Refresh manuel
+  const handleManualRefresh = async () => {
+    console.log("🔄 Refresh manuel");
+    await fetchGroupsData();
   };
 
   return (
@@ -106,9 +174,28 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
               style={{ backgroundColor: loading ? '#93c5fd' : '#3b82f6' }}
               className="w-full text-white hover:opacity-90 py-2 rounded-lg font-semibold transition-opacity disabled:opacity-50"
             >
-              {loading ? "Rejoindre..." : "🔗 Rejoindre un groupe"}
+              {loading ? "⏳ Rejoindre..." : "🔗 Rejoindre un groupe"}
             </button>
           </div>
+        </div>
+
+        {/* Bouton actualiser */}
+        <div className="mb-3">
+          <button
+            onClick={handleManualRefresh}
+            style={{ backgroundColor: '#3b82f6' }}
+            className="w-full text-white hover:opacity-90 px-3 py-2 rounded-lg transition-opacity text-sm flex items-center justify-center gap-2"
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? (
+              <>
+                <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                Actualisation...
+              </>
+            ) : (
+              "🔄 Actualiser"
+            )}
+          </button>
         </div>
 
         {/* Liste des groupes */}
