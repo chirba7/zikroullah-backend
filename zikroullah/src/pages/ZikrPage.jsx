@@ -123,27 +123,12 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       
-      {/* HEADER AVEC BOUTON RETOUR */}
-      <div className="bg-orange-500 text-white p-4">
-        <div className="flex justify-between items-center">
-          <button 
-            onClick={() => setPage("groupe")}
-            className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
-          >
-            ↩️ Retour au groupe
-          </button>
-          <h1 className="text-xl font-bold text-center flex-1 mx-4">
-            {group.name}
-          </h1>
-          <div className="w-12"></div> {/* Espace équilibré */}
-        </div>
-      </div>
+      {/* ZONE HAUTE */}
+      <div className="flex-1 overflow-y-auto pb-4 px-4">
+        <Header title={`Zikr : ${group.name}`} />
 
-      {/* CONTENU PRINCIPAL - TOUT VISIBLE SANS SCROLL */}
-      <div className="flex-1 p-4 space-y-4 overflow-hidden">
-        
-        {/* OBJECTIF */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        {/* Mode fixe uniquement */}
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <label className="block text-blue-800 font-semibold mb-2 text-center text-lg">
             🎯 Objectif à atteindre
           </label>
@@ -173,19 +158,19 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
           )}
         </div>
 
-        {/* SCORE ACTUEL */}
-        <div className="text-center bg-gray-50 rounded-2xl py-4 border">
+        {/* Score */}
+        <div className="text-center mb-6 bg-gray-50 rounded-2xl py-6 border">
           <p className="text-gray-600 text-lg mb-2">Votre score actuel</p>
-          <p className="text-6xl font-bold text-green-700">{count}</p>
-          <p className="text-gray-500 mt-2">fois "Allahou Akbar"</p>
+          <p className="text-7xl font-bold text-green-700">{count}</p>
+          <p className="text-gray-500 mt-2">fois </p>
         </div>
 
-        {/* BOUTONS ACTION COMPACT */}
+        {/* Boutons action */}
         <div className="space-y-3">
           <Button
             onClick={handleFinish}
             disabled={saving}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-3 font-bold"
+            className="w-full bg-red-600 hover:bg-red-700 text-lg py-4"
           >
             {saving ? "💾 Sauvegarde..." : "✅ Terminer et Sauvegarder"}
           </Button>
@@ -193,25 +178,32 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
           {count > 0 && (
             <Button
               onClick={handleReset}
-              className="w-full bg-red-600 hover:bg-red-700 text-white text-lg py-3 font-bold"
+              className="w-full bg-gray-500 hover:bg-gray-600 text-lg py-3"
             >
               🔄 Réinitialiser
             </Button>
           )}
+
+          <Button
+            onClick={() => setPage("groupe")}
+            className="w-full bg-gray-300 text-gray-800 hover:bg-gray-400 text-lg py-3"
+          >
+            ↩️ Retour au groupe
+          </Button>
         </div>
       </div>
 
-      {/* BOUTON +1 GRAND ET ACCESSIBLE */}
-      <div className="h-32 bg-green-600 mt-auto">
+      {/* BOUTON +1 */}
+      <div className="h-48 bg-green-600">
         <button
           onClick={handleIncrement}
           disabled={mode === "fixed" && count >= targetNumber && targetNumber > 0}
-          className={`w-full h-full text-white text-6xl font-bold transition-colors ${
+          className={`w-full h-full text-white text-8xl font-bold transition-colors ${
             pressed ? "bg-green-700" : "bg-green-600"
           } ${
             mode === "fixed" && count >= targetNumber && targetNumber > 0 
               ? "opacity-50 cursor-not-allowed" 
-              : "hover:bg-green-700 active:bg-green-800"
+              : "hover:bg-green-700"
           }`}
         >
           +1
@@ -219,4 +211,4 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
       </div>
     </div>
   );
-}
+} 
