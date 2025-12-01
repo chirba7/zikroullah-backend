@@ -1,5 +1,6 @@
 import express from "express";
 import Group from "../models/Group.js";
+import User from "../models/User.js";
 import { generateGroupKey } from "../utils/keyGenerator.js";
 
 const router = express.Router();
