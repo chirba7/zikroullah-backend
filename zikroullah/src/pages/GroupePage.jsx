@@ -88,35 +88,48 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
     await fetchGroupData();
   };
 
-  // Ajouter un membre manuellement (admin seulement)
-  const handleAddUser = async () => {
-    if (!newUserPhone.trim()) return alert("Veuillez entrer un numéro !");
-    
-    const exists = localGroup.members.find((m) => m.phone === newUserPhone);
-    if (exists) return alert("Utilisateur déjà dans le groupe !");
+  // Modifier la fonction handleAddUser
+const handleAddUser = async () => {
+  if (!newUserPhone.trim()) return alert("Veuillez entrer un numéro !");
+  
+  // Vérifier le format du numéro (optionnel)
+  const phoneRegex = /^\+?[0-9]{9,15}$/;
+  if (!phoneRegex.test(newUserPhone.trim())) {
+    return alert("Format de numéro invalide");
+  }
 
-    try {
-      const newMember = {
-        userId: Date.now(),
-        name: "Utilisateur à inviter",
-        phone: newUserPhone,
-        score: 0,
-      };
-      
-      const updatedMembers = [...localGroup.members, newMember];
-      const updatedGroup = { ...localGroup, members: updatedMembers };
-      
-      setLocalGroup(updatedGroup);
-      setGroups(groups.map(g => g._id === localGroup._id ? updatedGroup : g));
-      setNewUserPhone("");
-      setShowAddMember(false);
-      alert("Utilisateur ajouté au groupe !");
-      
-      await fetchGroupData();
-    } catch (error) {
-      alert("Erreur lors de l'ajout de l'utilisateur");
+  try {
+    console.log(`📤 Envoi d'invitation au ${newUserPhone}`);
+    
+    const response = await fetch(`${API_URL}/groups/${localGroup._id}/invite`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        phone: newUserPhone.trim(),
+        adminId: user.id
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Erreur lors de l'invitation");
     }
-  };
+
+    alert(`Invitation envoyée à ${data.invitedUser.name} !`);
+    setNewUserPhone("");
+    setShowAddMember(false);
+    
+    // Rafraîchir les données du groupe
+    await fetchGroupData();
+    
+  } catch (error) {
+    console.error("❌ Erreur invitation:", error);
+    alert(error.message || "Erreur lors de l'envoi de l'invitation");
+  }
+};
 
   // 🆕 Supprimer un membre (admin seulement) - AVEC APPEL API
   const handleRemoveUser = async (userId) => {

@@ -8,8 +8,33 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
   const [joinCode, setJoinCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [invitations, setInvitations] = useState([]);
+  const [showInvitations, setShowInvitations] = useState(false);
 
-  // ✅ Fetch direct des groupes depuis le serveur (comme GroupePage)
+  // Fetch des invitations
+  const fetchInvitations = async () => {
+    if (!user?.id) return;
+    
+    try {
+      console.log(`🔔 Fetch des invitations pour user ${user.id}...`);
+      
+      const response = await fetch(`${API_URL}/groups/invitations/${user.id}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log("✅ Invitations reçues:", data);
+      
+      setInvitations(data);
+      
+    } catch (error) {
+      console.error("❌ Erreur fetch invitations:", error);
+    }
+  };
+
+  // Fetch des groupes
   const fetchGroupsData = async () => {
     if (!user?.id) return;
     
@@ -24,12 +49,15 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
       }
       
       const freshData = await response.json();
-      console.log("✅ Données fraîches reçues:", {
-        totalGroups: freshData.length,
-        groups: freshData.map(g => ({ name: g.name, members: g.members.length }))
+      
+      // Filtrer pour ne garder que les groupes où l'utilisateur est actif
+      const activeGroups = freshData.filter(group => {
+        const member = group.members.find(m => m.userId === user.id);
+        return member && member.status === 'active';
       });
       
-      setGroups(freshData);
+      console.log("✅ Groupes actifs:", activeGroups);
+      setGroups(activeGroups);
       
     } catch (error) {
       console.error("❌ Erreur fetch groupes:", error);
@@ -38,17 +66,17 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
     }
   };
 
-  // ✅ Auto-refresh toutes les 2 secondes (exactement comme GroupePage)
+  // Auto-refresh groupes et invitations
   useEffect(() => {
     console.log("🔄 Démarrage auto-refresh pour HomePage");
     
-    // Premier fetch immédiat
     fetchGroupsData();
+    fetchInvitations();
     
-    // Puis toutes les 2 secondes
     const interval = setInterval(() => {
       console.log("⏰ Auto-refresh déclenché");
       fetchGroupsData();
+      fetchInvitations();
     }, 2000);
 
     return () => {
@@ -56,6 +84,69 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
       clearInterval(interval);
     };
   }, [user.id]);
+
+  // Accepter une invitation
+  const handleAcceptInvitation = async (groupId) => {
+    try {
+      console.log(`✅ Acceptation invitation groupe ${groupId}`);
+      
+      const response = await fetch(`${API_URL}/groups/invitations/${groupId}/accept`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: user.id })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Erreur lors de l'acceptation");
+      }
+
+      alert("Vous avez rejoint le groupe avec succès !");
+      
+      // Rafraîchir les données
+      await fetchInvitations();
+      await fetchGroupsData();
+      
+    } catch (error) {
+      console.error("❌ Erreur acceptation:", error);
+      alert(error.message || "Erreur lors de l'acceptation de l'invitation");
+    }
+  };
+
+  // Refuser une invitation
+  const handleDeclineInvitation = async (groupId) => {
+    if (!window.confirm("Voulez-vous vraiment refuser cette invitation ?")) return;
+    
+    try {
+      console.log(`❌ Refus invitation groupe ${groupId}`);
+      
+      const response = await fetch(`${API_URL}/groups/invitations/${groupId}/decline`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: user.id })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Erreur lors du refus");
+      }
+
+      alert("Invitation refusée");
+      
+      // Rafraîchir les invitations
+      await fetchInvitations();
+      
+    } catch (error) {
+      console.error("❌ Erreur refus:", error);
+      alert(error.message || "Erreur lors du refus de l'invitation");
+    }
+  };
 
   const handleJoinGroup = async () => {
     if (!joinCode.trim()) return alert("Veuillez entrer un code !");
@@ -82,25 +173,15 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
         throw new Error(data.message);
       }
 
-      // ✅ CRITIQUE : Rafraîchir AVANT l'alerte et la redirection
       console.log("🔄 Rafraîchissement des groupes après jonction...");
       await fetchGroupsData();
       
       alert("Groupe rejoint avec succès !");
       setJoinCode("");
       
-      // ✅ Redirection automatique vers le groupe rejoint
       if (data.group) {
-        console.log("🔄 Redirection vers le groupe:", data.group);
         setCurrentGroup(data.group);
         setPage("groupe");
-      } else {
-        // Si l'API ne retourne pas le groupe, on le cherche dans la liste rafraîchie
-        const joinedGroup = groups.find(g => g.key === joinCode.trim());
-        if (joinedGroup) {
-          setCurrentGroup(joinedGroup);
-          setPage("groupe");
-        }
       }
       
     } catch (error) {
@@ -122,10 +203,10 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
     }
   };
 
-  // Refresh manuel
   const handleManualRefresh = async () => {
     console.log("🔄 Refresh manuel");
     await fetchGroupsData();
+    await fetchInvitations();
   };
 
   return (
@@ -150,6 +231,80 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
 
       {/* Contenu principal scrollable */}
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
+        
+        {/* 🆕 Section Invitations */}
+        {invitations.length > 0 && (
+          <div className="mb-6">
+            <button
+              onClick={() => setShowInvitations(!showInvitations)}
+              className="w-full bg-orange-100 hover:bg-orange-200 border-2 border-orange-300 rounded-xl p-4 flex justify-between items-center transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🔔</span>
+                <div className="text-left">
+                  <h2 className="text-base md:text-lg font-bold text-orange-800">
+                    Invitations en attente
+                  </h2>
+                  <p className="text-sm text-orange-600">
+                    {invitations.length} invitation{invitations.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+              <span 
+                className="text-2xl transition-transform duration-300 text-orange-600" 
+                style={{ transform: showInvitations ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              >
+                ▼
+              </span>
+            </button>
+            
+            <div 
+              className="overflow-hidden transition-all duration-300 ease-in-out"
+              style={{ 
+                maxHeight: showInvitations ? '600px' : '0',
+                opacity: showInvitations ? '1' : '0'
+              }}
+            >
+              <div className="mt-3 space-y-3">
+                {invitations.map((invitation) => (
+                  <div
+                    key={invitation.groupId}
+                    className="bg-white rounded-xl shadow-md border-2 border-orange-200 p-4"
+                  >
+                    <div className="mb-3">
+                      <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                        🎯 {invitation.groupName}
+                      </h3>
+                      <div className="mt-2 space-y-1 text-sm text-gray-600">
+                        <p>👥 {invitation.membersCount} membre{invitation.membersCount > 1 ? 's' : ''}</p>
+                        <p className="font-mono text-xs bg-gray-100 px-2 py-1 rounded inline-block">
+                          🔑 {invitation.groupKey}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleAcceptInvitation(invitation.groupId)}
+                        style={{ backgroundColor: '#16a34a' }}
+                        className="text-white hover:opacity-90 py-2 rounded-lg font-semibold transition-opacity text-sm"
+                      >
+                        ✓ Accepter
+                      </button>
+                      <button
+                        onClick={() => handleDeclineInvitation(invitation.groupId)}
+                        style={{ backgroundColor: '#dc2626' }}
+                        className="text-white hover:opacity-90 py-2 rounded-lg font-semibold transition-opacity text-sm"
+                      >
+                        ✗ Refuser
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Actions rapides */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
@@ -216,7 +371,8 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {groups.map((group) => {
-                const totalScore = group.members?.reduce((acc, m) => acc + (m.score || 0), 0) || 0;
+                const activeMembers = group.members?.filter(m => m.status === 'active') || [];
+                const totalScore = activeMembers.reduce((acc, m) => acc + (m.score || 0), 0);
                 const isAdmin = user.id === group.adminId;
                 
                 return (
@@ -240,7 +396,7 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">👥 Membres</span>
                         <span className="font-semibold text-gray-800">
-                          {group.members?.length || 0}
+                          {activeMembers.length}
                         </span>
                       </div>
 

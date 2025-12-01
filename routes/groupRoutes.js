@@ -257,4 +257,158 @@ router.delete("/:groupId", async (req, res) => {
   }
 });
 
+// 🆕 Inviter un membre par numéro de téléphone
+router.post("/:groupId/invite", async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { phone, adminId } = req.body;
+
+    // Vérifier que le groupe existe
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Groupe non trouvé" });
+    }
+
+    // Vérifier que celui qui invite est bien l'admin
+    if (group.adminId.toString() !== adminId) {
+      return res.status(403).json({ message: "Seul l'administrateur peut inviter des membres" });
+    }
+
+    // Chercher l'utilisateur dans la base de données
+    const userToInvite = await User.findOne({ phone });
+    if (!userToInvite) {
+      return res.status(404).json({ message: "Aucun utilisateur trouvé avec ce numéro de téléphone" });
+    }
+
+    // Vérifier si l'utilisateur est déjà membre (actif ou en attente)
+    const isMember = group.members.some(member => 
+      member.userId.toString() === userToInvite._id.toString()
+    );
+
+    if (isMember) {
+      return res.status(400).json({ message: "Cet utilisateur est déjà membre ou a déjà été invité" });
+    }
+
+    // Ajouter l'utilisateur avec le statut "pending"
+    group.members.push({
+      userId: userToInvite._id,
+      name: `${userToInvite.prenom} ${userToInvite.nom}`,
+      phone: userToInvite.phone,
+      score: 0,
+      status: 'pending'
+    });
+
+    await group.save();
+
+    res.json({
+      message: "Invitation envoyée avec succès",
+      invitedUser: {
+        name: `${userToInvite.prenom} ${userToInvite.nom}`,
+        phone: userToInvite.phone
+      }
+    });
+  } catch (error) {
+    console.error("Erreur invitation membre:", error);
+    res.status(500).json({ message: "Erreur serveur lors de l'invitation" });
+  }
+});
+
+// 🆕 Récupérer les invitations en attente d'un utilisateur
+router.get("/invitations/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Trouver tous les groupes où l'utilisateur a une invitation en attente
+    const groups = await Group.find({
+      "members": {
+        $elemMatch: {
+          userId: userId,
+          status: "pending"
+        }
+      }
+    });
+
+    // Formatter les invitations
+    const invitations = groups.map(group => ({
+      groupId: group._id,
+      groupName: group.name,
+      groupKey: group.key,
+      adminId: group.adminId,
+      membersCount: group.members.filter(m => m.status === 'active').length
+    }));
+
+    res.json(invitations);
+  } catch (error) {
+    console.error("Erreur récupération invitations:", error);
+    res.status(500).json({ message: "Erreur serveur lors de la récupération des invitations" });
+  }
+});
+
+// 🆕 Accepter une invitation
+router.post("/invitations/:groupId/accept", async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { userId } = req.body;
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Groupe non trouvé" });
+    }
+
+    // Trouver le membre avec le statut pending
+    const memberIndex = group.members.findIndex(
+      member => member.userId.toString() === userId && member.status === 'pending'
+    );
+
+    if (memberIndex === -1) {
+      return res.status(404).json({ message: "Invitation non trouvée" });
+    }
+
+    // Changer le statut à "active"
+    group.members[memberIndex].status = 'active';
+    await group.save();
+
+    res.json({
+      message: "Invitation acceptée avec succès",
+      group: {
+        id: group._id,
+        name: group.name,
+        key: group.key,
+        members: group.members
+      }
+    });
+  } catch (error) {
+    console.error("Erreur acceptation invitation:", error);
+    res.status(500).json({ message: "Erreur serveur lors de l'acceptation de l'invitation" });
+  }
+});
+
+// 🆕 Refuser une invitation
+router.post("/invitations/:groupId/decline", async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { userId } = req.body;
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Groupe non trouvé" });
+    }
+
+    // Retirer le membre avec le statut pending
+    group.members = group.members.filter(
+      member => !(member.userId.toString() === userId && member.status === 'pending')
+    );
+
+    await group.save();
+
+    res.json({
+      message: "Invitation refusée",
+      groupId: group._id
+    });
+  } catch (error) {
+    console.error("Erreur refus invitation:", error);
+    res.status(500).json({ message: "Erreur serveur lors du refus de l'invitation" });
+  }
+});
+
 export default router;
