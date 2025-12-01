@@ -118,7 +118,7 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
     }
   };
 
-  // Supprimer un membre (admin seulement)
+  // 🆕 Supprimer un membre (admin seulement) - AVEC APPEL API
   const handleRemoveUser = async (userId) => {
     if (!window.confirm("Voulez-vous vraiment supprimer cet utilisateur du groupe ?")) return;
     
@@ -126,42 +126,76 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
       return alert("Vous ne pouvez pas vous supprimer vous-même du groupe !");
     }
 
-    const updatedMembers = localGroup.members.filter((m) => m.userId !== userId);
-    const updatedGroup = { ...localGroup, members: updatedMembers };
-    
-    setLocalGroup(updatedGroup);
-    setGroups(groups.map(g => g._id === localGroup._id ? updatedGroup : g));
-    alert("Utilisateur supprimé du groupe");
-    
-    await fetchGroupData();
+    try {
+      console.log(`🗑️ Suppression du membre ${userId} du groupe ${localGroup._id}`);
+      
+      const response = await fetch(`${API_URL}/groups/${localGroup._id}/members/${userId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminId: user.id // Envoyer l'ID de l'admin pour vérification
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Erreur lors de la suppression");
+      }
+
+      alert("Utilisateur supprimé du groupe avec succès");
+      
+      // Rafraîchir les données du groupe
+      await fetchGroupData();
+      
+    } catch (error) {
+      console.error("❌ Erreur suppression membre:", error);
+      alert(error.message || "Erreur lors de la suppression de l'utilisateur");
+    }
   };
 
-  // Supprimer le groupe (admin seulement)
+  // 🆕 Supprimer le groupe (admin seulement) - AVEC APPEL API
   const handleDeleteGroup = async () => {
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer définitivement ce groupe ?")) return;
 
     try {
+      console.log(`🗑️ Suppression du groupe ${localGroup._id}`);
+      
       const response = await fetch(`${API_URL}/groups/${localGroup._id}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminId: user.id // Envoyer l'ID de l'admin pour vérification
+        })
       });
 
-      if (response.ok) {
-        alert("Groupe supprimé avec succès");
-        
-        if (refreshGroups) {
-          await refreshGroups();
-        }
-        
-        setPage("home");
-      } else {
-        throw new Error("Erreur lors de la suppression");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Erreur lors de la suppression");
       }
+
+      alert("Groupe supprimé avec succès");
+      
+      // Rafraîchir la liste des groupes
+      if (refreshGroups) {
+        await refreshGroups();
+      }
+      
+      // Retourner à la page d'accueil
+      setPage("home");
+      
     } catch (error) {
-      alert("Erreur lors de la suppression du groupe");
+      console.error("❌ Erreur suppression groupe:", error);
+      alert(error.message || "Erreur lors de la suppression du groupe");
     }
   };
 
-  // Quitter le groupe (membre non-admin)
+  // 🆕 Quitter le groupe (membre non-admin) - AVEC APPEL API
   const handleLeaveGroup = async () => {
     if (!window.confirm("Voulez-vous vraiment quitter ce groupe ?")) return;
 
@@ -170,13 +204,37 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
     }
 
     try {
-      const updatedGroups = groups.filter(g => g._id !== localGroup._id);
-      setGroups(updatedGroups);
+      console.log(`👋 Quitter le groupe ${localGroup._id}`);
       
-      alert("Vous avez quitté le groupe");
+      const response = await fetch(`${API_URL}/groups/${localGroup._id}/leave`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.id
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Erreur lors de la sortie du groupe");
+      }
+
+      alert("Vous avez quitté le groupe avec succès");
+      
+      // Rafraîchir la liste des groupes
+      if (refreshGroups) {
+        await refreshGroups();
+      }
+      
+      // Retourner à la page d'accueil
       setPage("home");
+      
     } catch (error) {
-      alert("Erreur lors de la sortie du groupe");
+      console.error("❌ Erreur quitter groupe:", error);
+      alert(error.message || "Erreur lors de la sortie du groupe");
     }
   };
 

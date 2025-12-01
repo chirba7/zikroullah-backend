@@ -128,4 +128,133 @@ router.get("/:groupId", async (req, res) => {
   }
 });
 
+// 🆕 Supprimer un membre du groupe (Admin uniquement)
+router.delete("/:groupId/members/:userId", async (req, res) => {
+  try {
+    const { groupId, userId } = req.params;
+    const { adminId } = req.body; // L'ID de l'admin qui fait la requête
+
+    // Vérifier que le groupe existe
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Groupe non trouvé" });
+    }
+
+    // Vérifier que celui qui fait la requête est bien l'admin
+    if (group.adminId.toString() !== adminId) {
+      return res.status(403).json({ message: "Seul l'administrateur peut supprimer des membres" });
+    }
+
+    // Empêcher l'admin de se supprimer lui-même
+    if (userId === adminId) {
+      return res.status(400).json({ message: "L'administrateur ne peut pas se supprimer lui-même" });
+    }
+
+    // Vérifier que le membre existe dans le groupe
+    const memberExists = group.members.some(member => 
+      member.userId.toString() === userId
+    );
+
+    if (!memberExists) {
+      return res.status(404).json({ message: "Membre non trouvé dans ce groupe" });
+    }
+
+    // Supprimer le membre
+    group.members = group.members.filter(member => 
+      member.userId.toString() !== userId
+    );
+
+    await group.save();
+
+    res.json({
+      message: "Membre supprimé avec succès",
+      group: {
+        id: group._id,
+        name: group.name,
+        key: group.key,
+        adminId: group.adminId,
+        members: group.members
+      }
+    });
+  } catch (error) {
+    console.error("Erreur suppression membre:", error);
+    res.status(500).json({ message: "Erreur serveur lors de la suppression du membre" });
+  }
+});
+
+// 🆕 Quitter un groupe (Membre non-admin uniquement)
+router.post("/:groupId/leave", async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { userId } = req.body;
+
+    // Vérifier que le groupe existe
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Groupe non trouvé" });
+    }
+
+    // Empêcher l'admin de quitter le groupe
+    if (group.adminId.toString() === userId) {
+      return res.status(400).json({ 
+        message: "L'administrateur ne peut pas quitter le groupe. Supprimez le groupe à la place." 
+      });
+    }
+
+    // Vérifier que l'utilisateur est membre du groupe
+    const isMember = group.members.some(member => 
+      member.userId.toString() === userId
+    );
+
+    if (!isMember) {
+      return res.status(404).json({ message: "Vous n'êtes pas membre de ce groupe" });
+    }
+
+    // Retirer l'utilisateur du groupe
+    group.members = group.members.filter(member => 
+      member.userId.toString() !== userId
+    );
+
+    await group.save();
+
+    res.json({
+      message: "Vous avez quitté le groupe avec succès",
+      groupId: group._id
+    });
+  } catch (error) {
+    console.error("Erreur quitter groupe:", error);
+    res.status(500).json({ message: "Erreur serveur lors de la sortie du groupe" });
+  }
+});
+
+// 🆕 Supprimer un groupe (Admin uniquement)
+router.delete("/:groupId", async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { adminId } = req.body; // L'ID de l'admin qui fait la requête
+
+    // Vérifier que le groupe existe
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Groupe non trouvé" });
+    }
+
+    // Vérifier que celui qui fait la requête est bien l'admin
+    if (group.adminId.toString() !== adminId) {
+      return res.status(403).json({ message: "Seul l'administrateur peut supprimer le groupe" });
+    }
+
+    // Supprimer le groupe
+    await Group.findByIdAndDelete(groupId);
+
+    res.json({
+      message: "Groupe supprimé avec succès",
+      groupId: groupId
+    });
+  } catch (error) {
+    console.error("Erreur suppression groupe:", error);
+    res.status(500).json({ message: "Erreur serveur lors de la suppression du groupe" });
+  }
+});
+
 export default router;
