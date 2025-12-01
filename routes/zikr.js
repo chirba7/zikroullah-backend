@@ -12,14 +12,11 @@ const zikrSchema = new mongoose.Schema({
     required: true 
   },
   userName: { type: String, required: true },
-  zikrType: { 
-    type: String, 
-    
-  },
+ 
   count: { type: Number, required: true },
   mode: { 
     type: String, 
-    enum: ["unlimited", "fixed"],
+    enum: ["fixed"],
     required: true 
   },
   target: { type: Number, default: 0 },

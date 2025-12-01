@@ -15,7 +15,6 @@ export const saveZikr = async (req, res) => {
       groupId,
       userId,
       userName,
-      zikrType: "Allahou Akbar",
       count,
       mode,
       target,

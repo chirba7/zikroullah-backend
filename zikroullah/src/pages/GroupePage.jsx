@@ -268,47 +268,81 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
             }}
           >
             <div className="overflow-y-auto max-h-96 mt-2 space-y-2 pr-1">
-              {localGroup.members.map((m) => (
-                <div
-                  key={m.userId || m.id}
-                  className="flex justify-between items-center p-3 bg-white rounded-lg shadow-sm border"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <p className="font-semibold text-gray-800 text-sm md:text-base truncate">
-                        {m.name || `${m.firstName} ${m.lastName}`}
-                      </p>
-                      {m.userId === localGroup.adminId && (
-                        <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
-                          Admin
-                        </span>
-                      )}
-                      {m.userId === user.id && (
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
-                          Vous
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-gray-600 text-xs md:text-sm">{m.phone}</p>
-                    <div className="flex gap-3 mt-1 text-xs md:text-sm">
-                      <p className="text-green-600 font-semibold">🎯 {m.score || 0}</p>
-                      <p className="text-gray-500">
-                        {totalScore > 0 ? Math.round(((m.score || 0) / totalScore) * 100) : 0}%
-                      </p>
-                    </div>
-                  </div>
-
-                  {isAdmin && m.userId !== user.id && (
-                    <button
-                      className="text-red-600 hover:text-red-800 font-bold text-sm bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg ml-2 flex-shrink-0"
-                      onClick={() => handleRemoveUser(m.userId || m.id)}
-                      title="Supprimer"
+              {(() => {
+                // Trier les membres : Admin en premier, puis utilisateur connecté, puis les autres
+                const sortedMembers = [...localGroup.members].sort((a, b) => {
+                  const aIsAdmin = a.userId === localGroup.adminId;
+                  const bIsAdmin = b.userId === localGroup.adminId;
+                  const aIsCurrentUser = a.userId === user.id;
+                  const bIsCurrentUser = b.userId === user.id;
+                  
+                  // Admin toujours en premier
+                  if (aIsAdmin) return -1;
+                  if (bIsAdmin) return 1;
+                  
+                  // Utilisateur connecté en deuxième (si pas admin)
+                  if (aIsCurrentUser) return -1;
+                  if (bIsCurrentUser) return 1;
+                  
+                  // Les autres gardent leur ordre
+                  return 0;
+                });
+                
+                return sortedMembers.map((m) => {
+                  // Déterminer la couleur de fond selon le rôle
+                  const isCurrentUser = m.userId === user.id;
+                  const isMemberAdmin = m.userId === localGroup.adminId;
+                  
+                  let bgColorClass = "bg-white"; // Par défaut
+                  if (isMemberAdmin) {
+                    bgColorClass = "bg-yellow-50"; // Admin en jaune
+                  } else if (isCurrentUser) {
+                    bgColorClass = "bg-blue-50"; // Utilisateur connecté en bleu
+                  }
+                  
+                  return (
+                    <div
+                      key={m.userId || m.id}
+                      className={`flex justify-between items-center p-3 ${bgColorClass} rounded-lg shadow-sm border`}
                     >
-                      🗑️
-                    </button>
-                  )}
-                </div>
-              ))}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-semibold text-gray-800 text-sm md:text-base truncate">
+                          {m.name || `${m.firstName} ${m.lastName}`}
+                        </p>
+                        {m.userId === localGroup.adminId && (
+                          <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
+                            Admin
+                          </span>
+                        )}
+                        {m.userId === user.id && (
+                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
+                            Vous
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-gray-600 text-xs md:text-sm">{m.phone}</p>
+                      <div className="flex gap-3 mt-1 text-xs md:text-sm">
+                        <p className="text-green-600 font-semibold">🎯 {m.score || 0}</p>
+                        <p className="text-gray-500">
+                          {totalScore > 0 ? Math.round(((m.score || 0) / totalScore) * 100) : 0}%
+                        </p>
+                      </div>
+                    </div>
+
+                    {isAdmin && m.userId !== user.id && (
+                      <button
+                        className="text-red-600 hover:text-red-800 font-bold text-sm bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg ml-2 flex-shrink-0"
+                        onClick={() => handleRemoveUser(m.userId || m.id)}
+                        title="Supprimer"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>

@@ -11,16 +11,11 @@ const zikrSchema = new mongoose.Schema({
     ref: "User", 
     required: true 
   },
-  userName: { type: String, required: true },
-  zikrType: { 
-    type: String, 
-    default: "Allahou Akbar",
-    enum: ["Allahou Akbar", "Soubhanallah", "Alhamdoulillah", "La ilaha illa Allah"]
-  },
+ 
   count: { type: Number, required: true },
   mode: { 
     type: String, 
-    enum: ["unlimited", "fixed"],
+    enum: ["fixed"],
     required: true 
   },
   target: { type: Number, default: 0 },

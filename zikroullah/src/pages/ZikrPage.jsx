@@ -101,7 +101,7 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
       }
       
       // Maintenant que les données sont rafraîchies, on peut afficher l'alerte
-      alert(`✅ Zikr sauvegardé !\n\n${count} fois "Allahou Akbar"`);
+      alert(`✅ Zikr sauvegardé !\n\n${count} fois`);
       
       setCount(0);
       setTarget("");
