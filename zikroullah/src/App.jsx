@@ -161,6 +161,7 @@ const refreshGroups = async () => {
         user={user}
         setPage={setPage}
         setGroups={setGroups}
+        refreshGroups={refreshGroups}
       />
     );
   }
