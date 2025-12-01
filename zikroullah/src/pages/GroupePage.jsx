@@ -10,14 +10,16 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [showPendingInvitations, setShowPendingInvitations] = useState(false); // 🆕
   
   console.log("🔍 GroupePage rendu - Group ID:", localGroup?._id);
   console.log("🔍 Scores actuels:", localGroup?.members?.map(m => ({
     name: m.name, 
-    score: m.score
+    score: m.score,
+    status: m.status
   })));
   
-  // ✅ SOLUTION : Fetch direct du groupe depuis le serveur
+  // ✅ Fetch direct du groupe depuis le serveur
   const fetchGroupData = async () => {
     if (!localGroup?._id) return;
     
@@ -34,8 +36,8 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
       const freshData = await response.json();
       console.log("✅ Données fraîches reçues:", {
         groupId: freshData._id,
-        totalScore: freshData.members.reduce((acc, m) => acc + (m.score || 0), 0),
-        members: freshData.members.map(m => ({ name: m.name, score: m.score }))
+        totalScore: freshData.members.filter(m => m.status === 'active').reduce((acc, m) => acc + (m.score || 0), 0),
+        members: freshData.members.map(m => ({ name: m.name, score: m.score, status: m.status }))
       });
       
       setLocalGroup(freshData);
@@ -57,10 +59,8 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
   useEffect(() => {
     console.log("🔄 Démarrage auto-refresh pour groupe:", localGroup?._id);
     
-    // Premier fetch immédiat
     fetchGroupData();
     
-    // Puis toutes les 2 secondes
     const interval = setInterval(() => {
       console.log("⏰ Auto-refresh déclenché");
       fetchGroupData();
@@ -82,56 +82,90 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
 
   const isAdmin = user.id === localGroup.adminId;
 
+  // 🆕 Séparer les membres actifs et en attente
+  const activeMembers = localGroup.members.filter(m => m.status === 'active');
+  const pendingMembers = localGroup.members.filter(m => m.status === 'pending');
+
   // Refresh manuel
   const handleManualRefresh = async () => {
     console.log("🔄 Refresh manuel");
     await fetchGroupData();
   };
 
-  // Modifier la fonction handleAddUser
-const handleAddUser = async () => {
-  if (!newUserPhone.trim()) return alert("Veuillez entrer un numéro !");
-  
-  // Vérifier le format du numéro (optionnel)
-  const phoneRegex = /^\+?[0-9]{9,15}$/;
-  if (!phoneRegex.test(newUserPhone.trim())) {
-    return alert("Format de numéro invalide");
-  }
-
-  try {
-    console.log(`📤 Envoi d'invitation au ${newUserPhone}`);
+  // Ajouter un membre manuellement (admin seulement)
+  const handleAddUser = async () => {
+    if (!newUserPhone.trim()) return alert("Veuillez entrer un numéro !");
     
-    const response = await fetch(`${API_URL}/groups/${localGroup._id}/invite`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        phone: newUserPhone.trim(),
-        adminId: user.id
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Erreur lors de l'invitation");
+    const phoneRegex = /^\+?[0-9]{9,15}$/;
+    if (!phoneRegex.test(newUserPhone.trim())) {
+      return alert("Format de numéro invalide");
     }
 
-    alert(`Invitation envoyée à ${data.invitedUser.name} !`);
-    setNewUserPhone("");
-    setShowAddMember(false);
-    
-    // Rafraîchir les données du groupe
-    await fetchGroupData();
-    
-  } catch (error) {
-    console.error("❌ Erreur invitation:", error);
-    alert(error.message || "Erreur lors de l'envoi de l'invitation");
-  }
-};
+    try {
+      console.log(`📤 Envoi d'invitation au ${newUserPhone}`);
+      
+      const response = await fetch(`${API_URL}/groups/${localGroup._id}/invite`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: newUserPhone.trim(),
+          adminId: user.id
+        })
+      });
 
-  // 🆕 Supprimer un membre (admin seulement) - AVEC APPEL API
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Erreur lors de l'invitation");
+      }
+
+      alert(`Invitation envoyée à ${data.invitedUser.name} !`);
+      setNewUserPhone("");
+      setShowAddMember(false);
+      
+      await fetchGroupData();
+      
+    } catch (error) {
+      console.error("❌ Erreur invitation:", error);
+      alert(error.message || "Erreur lors de l'envoi de l'invitation");
+    }
+  };
+
+  // 🆕 Annuler une invitation (admin seulement)
+  const handleCancelInvitation = async (userId) => {
+    if (!window.confirm("Voulez-vous vraiment annuler cette invitation ?")) return;
+
+    try {
+      console.log(`🗑️ Annulation invitation pour ${userId}`);
+      
+      const response = await fetch(`${API_URL}/groups/${localGroup._id}/members/${userId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminId: user.id
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Erreur lors de l'annulation");
+      }
+
+      alert("Invitation annulée avec succès");
+      await fetchGroupData();
+      
+    } catch (error) {
+      console.error("❌ Erreur annulation invitation:", error);
+      alert(error.message || "Erreur lors de l'annulation de l'invitation");
+    }
+  };
+
+  // Supprimer un membre (admin seulement)
   const handleRemoveUser = async (userId) => {
     if (!window.confirm("Voulez-vous vraiment supprimer cet utilisateur du groupe ?")) return;
     
@@ -148,7 +182,7 @@ const handleAddUser = async () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          adminId: user.id // Envoyer l'ID de l'admin pour vérification
+          adminId: user.id
         })
       });
 
@@ -159,8 +193,6 @@ const handleAddUser = async () => {
       }
 
       alert("Utilisateur supprimé du groupe avec succès");
-      
-      // Rafraîchir les données du groupe
       await fetchGroupData();
       
     } catch (error) {
@@ -169,7 +201,7 @@ const handleAddUser = async () => {
     }
   };
 
-  // 🆕 Supprimer le groupe (admin seulement) - AVEC APPEL API
+  // Supprimer le groupe (admin seulement)
   const handleDeleteGroup = async () => {
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer définitivement ce groupe ?")) return;
 
@@ -182,7 +214,7 @@ const handleAddUser = async () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          adminId: user.id // Envoyer l'ID de l'admin pour vérification
+          adminId: user.id
         })
       });
 
@@ -194,12 +226,10 @@ const handleAddUser = async () => {
 
       alert("Groupe supprimé avec succès");
       
-      // Rafraîchir la liste des groupes
       if (refreshGroups) {
         await refreshGroups();
       }
       
-      // Retourner à la page d'accueil
       setPage("home");
       
     } catch (error) {
@@ -208,7 +238,7 @@ const handleAddUser = async () => {
     }
   };
 
-  // 🆕 Quitter le groupe (membre non-admin) - AVEC APPEL API
+  // Quitter le groupe (membre non-admin)
   const handleLeaveGroup = async () => {
     if (!window.confirm("Voulez-vous vraiment quitter ce groupe ?")) return;
 
@@ -237,12 +267,10 @@ const handleAddUser = async () => {
 
       alert("Vous avez quitté le groupe avec succès");
       
-      // Rafraîchir la liste des groupes
       if (refreshGroups) {
         await refreshGroups();
       }
       
-      // Retourner à la page d'accueil
       setPage("home");
       
     } catch (error) {
@@ -251,8 +279,8 @@ const handleAddUser = async () => {
     }
   };
 
-  // Calcul sécurisé du score total
-  const totalScore = localGroup.members.reduce((acc, m) => acc + (m.score || 0), 0);
+  // Calcul du score total (uniquement membres actifs)
+  const totalScore = activeMembers.reduce((acc, m) => acc + (m.score || 0), 0);
 
   return (
     <div className="h-screen flex flex-col bg-white overflow-hidden">
@@ -316,13 +344,76 @@ const handleAddUser = async () => {
           </button>
         </div>
 
-        {/* Liste des membres - Accordéon */}
+        {/* 🆕 Invitations en attente (Admin uniquement) */}
+        {isAdmin && pendingMembers.length > 0 && (
+          <div className="mb-3">
+            <button
+              onClick={() => setShowPendingInvitations(!showPendingInvitations)}
+              className="w-full bg-orange-100 hover:bg-orange-200 border-2 border-orange-300 rounded-lg p-3 flex justify-between items-center transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xl">⏳</span>
+                <h2 className="text-base md:text-lg font-semibold text-orange-800">
+                  Invitations en attente ({pendingMembers.length})
+                </h2>
+              </div>
+              <span 
+                className="text-xl transition-transform duration-300 text-orange-600" 
+                style={{ transform: showPendingInvitations ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              >
+                ▼
+              </span>
+            </button>
+            
+            <div 
+              className="overflow-hidden transition-all duration-300 ease-in-out"
+              style={{ 
+                maxHeight: showPendingInvitations ? '400px' : '0',
+                opacity: showPendingInvitations ? '1' : '0'
+              }}
+            >
+              <div className="overflow-y-auto max-h-96 mt-2 space-y-2 pr-1">
+                {pendingMembers.map((m) => (
+                  <div
+                    key={m.userId || m.id}
+                    className="flex justify-between items-center p-3 bg-orange-50 rounded-lg shadow-sm border-2 border-orange-200"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-semibold text-gray-800 text-sm md:text-base truncate">
+                          {m.name || `${m.firstName} ${m.lastName}`}
+                        </p>
+                        <span className="bg-orange-200 text-orange-800 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
+                          ⏳ En attente
+                        </span>
+                      </div>
+                      <p className="text-gray-600 text-xs md:text-sm">{m.phone}</p>
+                      <p className="text-xs text-orange-600 mt-1">
+                        Invitation envoyée - En attente d'acceptation
+                      </p>
+                    </div>
+
+                    <button
+                      className="text-red-600 hover:text-red-800 font-bold text-sm bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg ml-2 flex-shrink-0"
+                      onClick={() => handleCancelInvitation(m.userId || m.id)}
+                      title="Annuler l'invitation"
+                    >
+                      ❌
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Liste des membres actifs - Accordéon */}
         <div className="mb-3">
           <button
             onClick={() => setShowMembers(!showMembers)}
             className="w-full bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg p-3 flex justify-between items-center transition-colors"
           >
-            <h2 className="text-base md:text-lg font-semibold">👥 Membres ({localGroup.members.length})</h2>
+            <h2 className="text-base md:text-lg font-semibold">👥 Membres actifs ({activeMembers.length})</h2>
             <span 
               className="text-xl transition-transform duration-300" 
               style={{ transform: showMembers ? 'rotate(180deg)' : 'rotate(0deg)' }}
@@ -341,34 +432,30 @@ const handleAddUser = async () => {
             <div className="overflow-y-auto max-h-96 mt-2 space-y-2 pr-1">
               {(() => {
                 // Trier les membres : Admin en premier, puis utilisateur connecté, puis les autres
-                const sortedMembers = [...localGroup.members].sort((a, b) => {
+                const sortedMembers = [...activeMembers].sort((a, b) => {
                   const aIsAdmin = a.userId === localGroup.adminId;
                   const bIsAdmin = b.userId === localGroup.adminId;
                   const aIsCurrentUser = a.userId === user.id;
                   const bIsCurrentUser = b.userId === user.id;
                   
-                  // Admin toujours en premier
                   if (aIsAdmin) return -1;
                   if (bIsAdmin) return 1;
                   
-                  // Utilisateur connecté en deuxième (si pas admin)
                   if (aIsCurrentUser) return -1;
                   if (bIsCurrentUser) return 1;
                   
-                  // Les autres gardent leur ordre
                   return 0;
                 });
                 
                 return sortedMembers.map((m) => {
-                  // Déterminer la couleur de fond selon le rôle
                   const isCurrentUser = m.userId === user.id;
                   const isMemberAdmin = m.userId === localGroup.adminId;
                   
-                  let bgColorClass = "bg-white"; // Par défaut
+                  let bgColorClass = "bg-white";
                   if (isMemberAdmin) {
-                    bgColorClass = "bg-yellow-50"; // Admin en jaune
+                    bgColorClass = "bg-yellow-50";
                   } else if (isCurrentUser) {
-                    bgColorClass = "bg-blue-50"; // Utilisateur connecté en bleu
+                    bgColorClass = "bg-blue-50";
                   }
                   
                   return (
@@ -376,41 +463,41 @@ const handleAddUser = async () => {
                       key={m.userId || m.id}
                       className={`flex justify-between items-center p-3 ${bgColorClass} rounded-lg shadow-sm border`}
                     >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <p className="font-semibold text-gray-800 text-sm md:text-base truncate">
-                          {m.name || `${m.firstName} ${m.lastName}`}
-                        </p>
-                        {m.userId === localGroup.adminId && (
-                          <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
-                            Admin
-                          </span>
-                        )}
-                        {m.userId === user.id && (
-                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
-                            Vous
-                          </span>
-                        )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <p className="font-semibold text-gray-800 text-sm md:text-base truncate">
+                            {m.name || `${m.firstName} ${m.lastName}`}
+                          </p>
+                          {m.userId === localGroup.adminId && (
+                            <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
+                              Admin
+                            </span>
+                          )}
+                          {m.userId === user.id && (
+                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
+                              Vous
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-600 text-xs md:text-sm">{m.phone}</p>
+                        <div className="flex gap-3 mt-1 text-xs md:text-sm">
+                          <p className="text-green-600 font-semibold">🎯 {m.score || 0}</p>
+                          <p className="text-gray-500">
+                            {totalScore > 0 ? Math.round(((m.score || 0) / totalScore) * 100) : 0}%
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-gray-600 text-xs md:text-sm">{m.phone}</p>
-                      <div className="flex gap-3 mt-1 text-xs md:text-sm">
-                        <p className="text-green-600 font-semibold">🎯 {m.score || 0}</p>
-                        <p className="text-gray-500">
-                          {totalScore > 0 ? Math.round(((m.score || 0) / totalScore) * 100) : 0}%
-                        </p>
-                      </div>
-                    </div>
 
-                    {isAdmin && m.userId !== user.id && (
-                      <button
-                        className="text-red-600 hover:text-red-800 font-bold text-sm bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg ml-2 flex-shrink-0"
-                        onClick={() => handleRemoveUser(m.userId || m.id)}
-                        title="Supprimer"
-                      >
-                        🗑️
-                      </button>
-                    )}
-                  </div>
+                      {isAdmin && m.userId !== user.id && (
+                        <button
+                          className="text-red-600 hover:text-red-800 font-bold text-sm bg-red-50 hover:bg-red-100 px-2 py-1 rounded-lg ml-2 flex-shrink-0"
+                          onClick={() => handleRemoveUser(m.userId || m.id)}
+                          title="Supprimer"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
                   );
                 });
               })()}
