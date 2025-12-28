@@ -66,7 +66,7 @@ export default function CreateGroupPage({ user, setPage, setGroups, refreshGroup
           style={{ backgroundColor: '#f97316' }}
           className="text-white hover:opacity-90 px-3 md:px-4 py-2 rounded-lg font-medium transition-opacity text-sm md:text-base whitespace-nowrap"
         >
-          ↩️ Retour
+          ↩ Retour
         </button>
       </div>
 

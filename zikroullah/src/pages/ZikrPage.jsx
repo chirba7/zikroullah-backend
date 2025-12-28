@@ -131,7 +131,7 @@ export default function ZikrPage({ group, user, setPage, refreshGroups }) {
           style={{ backgroundColor: '#f97316' }}
           className="text-white hover:opacity-90 px-4 py-2 rounded-lg font-medium transition-opacity"
         >
-          ↩️ Retour
+          ↩ Retour
         </button>
       </div>
 

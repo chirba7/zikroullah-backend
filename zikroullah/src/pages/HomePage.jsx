@@ -216,7 +216,7 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
       <div className="flex justify-between items-center px-4 md:px-6 py-4 bg-white border-b flex-shrink-0">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-800">
-            Bienvenue, {user.prenom}
+            {user.prenom}
           </h1>
           <p className="text-sm text-gray-500">{user.phone}</p>
         </div>
@@ -338,7 +338,7 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
         <div className="mb-3">
           <button
             onClick={handleManualRefresh}
-            style={{ backgroundColor: '#3b82f6' }}
+            style={{ backgroundColor: '#ffffffff' }}
             className="w-full text-white hover:opacity-90 px-3 py-2 rounded-lg transition-opacity text-sm flex items-center justify-center gap-2"
             disabled={isRefreshing}
           >
@@ -348,7 +348,7 @@ export default function HomePage({ user, groups, setGroups, setCurrentGroup, set
                 Actualisation...
               </>
             ) : (
-              "🔄 Actualiser"
+              " Actualiser"
             )}
           </button>
         </div>

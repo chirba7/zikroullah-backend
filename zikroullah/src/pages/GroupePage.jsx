@@ -293,7 +293,7 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
           style={{ backgroundColor: '#f97316' }}
           className="text-white hover:opacity-90 px-3 md:px-4 py-2 rounded-lg font-medium transition-opacity text-sm md:text-base whitespace-nowrap"
         >
-          ↩️ Retour
+          ↩ Retour
         </button>
       </div>
 
@@ -329,7 +329,7 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
         <div className="mb-3">
           <button
             onClick={handleManualRefresh}
-            style={{ backgroundColor: '#3b82f6' }}
+            style={{ backgroundColor: '#ffffffff' }}
             className="w-full text-white hover:opacity-90 px-3 py-2 rounded-lg transition-opacity text-sm flex items-center justify-center gap-2"
             disabled={isRefreshing}
           >
@@ -339,7 +339,7 @@ export default function GroupePage({ group, setPage, user, setGroups, groups, re
                 Actualisation...
               </>
             ) : (
-              "🔄 Actualiser"
+              " Actualiser"
             )}
           </button>
         </div>
